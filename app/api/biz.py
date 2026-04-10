@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 
 from app.core.es_client import ESClient
+from app.core.logger import logger
 from app.models.biz import (
     FeedItem, FeedResponse,
     SearchItem, BizSearchResponse,
@@ -174,6 +175,7 @@ def feed(
             highlight=False,
         )
     except Exception as e:
+        logger.error(f"feed error tab={tab}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
     total = resp["hits"]["total"]["value"]
@@ -236,6 +238,7 @@ def biz_search(
             highlight=True,
         )
     except Exception as e:
+        logger.error(f"search error q={q} tab={tab}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
     total = resp["hits"]["total"]["value"]
