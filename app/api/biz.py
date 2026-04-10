@@ -14,6 +14,7 @@ from app.core.logger import logger
 from app.models.biz import (
     FeedItem, FeedResponse,
     SearchItem, BizSearchResponse,
+    ArticleDetail,
 )
 
 router = APIRouter(prefix="/biz/v1", tags=["biz"])
@@ -250,5 +251,30 @@ def biz_search(
         page_size=page_size,
         section_counts=None,
         items=items,
+    )
+
+
+@router.get("/articles/{id}", response_model=ArticleDetail, summary="文章详情")
+def article_detail(id: str):
+    doc = get_es().get_by_id(id)
+    if doc is None:
+        raise HTTPException(status_code=404, detail="文章不存在")
+
+    src = doc["_source"]
+    stock_codes = src.get("stock_code", [])
+    reverse_tab = {v: k for k, v in TAB_TO_DOC_TYPE.items()}
+
+    return ArticleDetail(
+        id=src.get("doc_id", doc["_id"]),
+        title=src.get("title"),
+        content=src.get("content"),
+        date=_rec_time_to_str(src.get("rec_time")),
+        tab=reverse_tab.get(src.get("doc_type", "")),
+        institution=src.get("tags", {}).get("institute"),
+        stock_name=None,
+        stock_code=stock_codes[0] if stock_codes else None,
+        tags=[],
+        pages=src.get("pages"),
+        images=None,
     )
 

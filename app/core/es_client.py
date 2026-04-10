@@ -158,6 +158,14 @@ class ESClient:
 
         return self.es.search(index=self.index, body=body)
 
+    def get_by_id(self, doc_id: str) -> dict | None:
+        """按 _id 查单条文档，不存在返回 None"""
+        try:
+            resp = self.es.get(index=self.index, id=doc_id)
+            return resp if resp["found"] else None
+        except Exception:
+            return None
+
     def search_raw(
         self,
         must: list,

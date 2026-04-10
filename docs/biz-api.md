@@ -16,8 +16,8 @@ Base URL: `http://<host>:30011/biz/v1`
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|------|--------|------|
-| tab | string | 是 | - | 内容类型：`综合` `点评` `纪要` `研报` |
-| filter | string | 否 | `全部` | 子筛选项，见下表 |
+| tab | string | 是 | - | 内容类型：`点评` `纪要` `研报`，不传返回全部类型 |
+| filter | string | 否 | - | 子筛选项，不传表示全部，见下表 |
 | include_ir | boolean | 否 | false | 纪要 Tab：是否包含投关活动 |
 | include_wechat | boolean | 否 | true | 研报 Tab：是否包含公众号 |
 | page | integer | 否 | 1 | 页码，从 1 开始 |
@@ -90,8 +90,7 @@ GET /biz/v1/feed?tab=点评&filter=机构&page=1&page_size=20
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|------|--------|------|
 | q | string | 是 | - | 搜索关键词，1~100 字 |
-| tab | string | 否 | `综合` | `综合` `点评` `纪要` `研报` `图表` `公告` `互动` `社媒` |
-| filter | string | 否 | `全部` | 子筛选项，见下表 |
+| tab | string | 否 | `综合` | `综合` `点评` `纪要` `研报` `图表` `公告` `互动` `社媒` || filter | string | 否 | - | 子筛选项，不传表示全部，见下表 |
 | sort | string | 否 | `time` | 排序方式：`time`（时间倒序）`score`（相关度） |
 | page | integer | 否 | 1 | 页码，从 1 开始 |
 | page_size | integer | 否 | 25 | 每页条数，图表 Tab 建议 16，其余 25 |
@@ -194,6 +193,66 @@ GET /biz/v1/search?q=低空经济&tab=研报&filter=机构&sort=time&page=1&page
 | items[].images | string[]\|null | 图片 URL 列表，仅图表 Tab 有值 |
 
 > **ES highlight 说明**：`title` 和 `content` 字段中，命中关键词会被 `<em>` 标签包裹，前端负责将 `<em>` 渲染为高亮样式（黄色背景）。
+
+---
+
+## 3. 文章详情
+
+**GET** `/biz/v1/articles/{id}`
+
+根据文章 ID 获取完整内容，用于详情抽屉展示。
+
+### Path Parameters
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| id | string | 文章唯一 ID（ES doc _id） |
+
+### 示例请求
+
+```
+GET /biz/v1/articles/doc_abc123
+```
+
+### 响应示例
+
+```json
+{
+  "id": "doc_abc123",
+  "title": "核心逻辑：低空经济产业链深度剖析",
+  "content": "完整正文内容，不截断…",
+  "date": "2024-05-20 14:30",
+  "tab": "纪要",
+  "institution": "中金公司",
+  "stock_name": null,
+  "stock_code": null,
+  "tags": ["#低空经济产业链"],
+  "pages": null,
+  "images": null
+}
+```
+
+### 响应字段说明
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | string | 文章唯一 ID |
+| title | string | 标题 |
+| content | string | 完整正文，不截断，保留 `\n` 换行 |
+| date | string | 发布时间 |
+| tab | string | 文章类型：`综合` `点评` `纪要` `研报` 等 |
+| institution | string\|null | 机构名称 |
+| stock_name | string\|null | 关联股票名称 |
+| stock_code | string\|null | 关联股票代码 |
+| tags | string[] | 话题标签 |
+| pages | integer\|null | 页数，仅研报有值 |
+| images | string[]\|null | 图片 URL 列表 |
+
+### 错误响应
+
+| HTTP 状态码 | 说明 |
+|-------------|------|
+| 404 | 文章不存在 |
 
 ---
 

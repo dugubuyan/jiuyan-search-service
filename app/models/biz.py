@@ -69,3 +69,19 @@ class BizSearchResponse(BaseModel):
     page_size: int
     section_counts: Optional[dict] = None  # 仅综合Tab
     items: list[SearchItem]
+
+
+# ---------- Article Detail ----------
+
+class ArticleDetail(BaseModel):
+    id: str
+    title: Optional[str] = None
+    content: Optional[str] = None
+    date: str
+    tab: Optional[str] = None
+    institution: Optional[str] = None
+    stock_name: Optional[str] = None
+    stock_code: Optional[str] = None
+    tags: list[str] = []
+    pages: Optional[int] = None
+    images: Optional[list[str]] = None
