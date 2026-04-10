@@ -36,5 +36,7 @@ def health():
 
 
 if __name__ == "__main__":
+    import os
+    is_dev = os.getenv("APP_ENV", "production") != "production"
     logger.info("starting search-service on port 30011")
-    uvicorn.run("main:app", host="0.0.0.0", port=30011, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=30011, reload=is_dev)

@@ -2,8 +2,11 @@
 Elasticsearch 客户端封装
 搜索时自动过滤 status=published，确保未审核内容不对外可见。
 """
+import logging
 from elasticsearch import Elasticsearch
 from config import ES_CONFIG
+
+logger = logging.getLogger("search-service")
 
 # Index mapping — 与主工程 es_indexer 保持一致
 INDEX_MAPPING = {
@@ -49,6 +52,11 @@ class ESClient:
     def __init__(self):
         self.es = get_es_client()
         self.index = ES_CONFIG["index"]
+        try:
+            info = self.es.info()
+            logger.info(f"[ES] 连接成功: {info['version']['number']}")
+        except Exception as e:
+            logger.error(f"[ES] 连接失败: {e}", exc_info=True)
 
     def ensure_index(self):
         if not self.es.indices.exists(index=self.index):
