@@ -58,10 +58,11 @@ TAB_TO_DOC_TYPE = {
     "公告": "announcement",
 }
 
-# filter -> source 映射（机构/网络）
+# filter -> source 映射
 FILTER_TO_SOURCE = {
     "机构": "机构",
     "网络": "网络",
+    "图片": "图片",
 }
 
 
@@ -76,7 +77,7 @@ def _build_feed_filters(tab: str, filter_val: str, include_ir: bool, include_wec
         # 研报Tab：不含公众号时排除
         if tab == "研报" and not include_wechat:
             filters.append({"bool": {"must_not": {"term": {"source": "公众号"}}}})
-        # 机构/网络 子筛选
+        # 机构/网络/图片 子筛选
         if filter_val in FILTER_TO_SOURCE:
             filters.append({"term": {"source": FILTER_TO_SOURCE[filter_val]}})
 
