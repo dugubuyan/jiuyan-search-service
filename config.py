@@ -3,9 +3,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-CORS_ENABLED = os.getenv("CORS_ENABLED", "false").lower() == "true"
-CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",") if o.strip()]
-
 ES_CONFIG = {
     "hosts":    os.getenv("ES_HOSTS", "http://localhost:9200"),
     "username": os.getenv("ES_USERNAME", ""),
