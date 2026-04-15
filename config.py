@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+CORS_ENABLED = os.getenv("CORS_ENABLED", "false").lower() == "true"
 CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",") if o.strip()]
 
 ES_CONFIG = {
