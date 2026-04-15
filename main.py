@@ -4,15 +4,25 @@ search-service 入口
 import time
 import uvicorn
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from app.core.logger import logger
 from app.api.search import router as search_router
 from app.api.admin import router as admin_router
 from app.api.biz import router as biz_router
+from config import CORS_ORIGINS
 
 app = FastAPI(
     title="Knowledge Search Service",
     description="基于 Elasticsearch 的知识库全文检索服务，数据来源于 MongoDB + OSS",
     version="1.0.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 

@@ -176,7 +176,7 @@ class ESClient:
         highlight: bool = False,
     ) -> dict:
         """供 BIZ 层直接传入 must/filters/sort 的底层搜索"""
-        filters = [{"term": {"status": "pending"}}]
+        filters = [{"term": {"status": "published"}}]
         if extra_filters:
             filters.extend(extra_filters)
 
