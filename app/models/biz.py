@@ -21,8 +21,14 @@ class FeedItem(BaseModel):
     title: Optional[str] = None
     content: Optional[str] = None
     date: str
-    tags: list[str] = []
-    companies: list[str] = []
+    source: Optional[str] = None
+    stock_code: list[str] = []
+    industry: list[str] = []
+    theme: list[str] = []
+    institute: Optional[str] = None
+    src_url: Optional[str] = None
+    tags: list[str] = []               # 保留兼容，当前为空
+    companies: list[str] = []          # 保留兼容，当前为空
     author: Optional[str] = None
     pages: Optional[int] = None
 
@@ -55,9 +61,13 @@ class SearchItem(BaseModel):
     content: Optional[str] = None
     date: str
     tab: Optional[str] = None          # 仅综合Tab返回
+    source: Optional[str] = None
     institution: Optional[str] = None
     stock_name: Optional[str] = None   # 暂留空，待后续补充
     stock_code: Optional[str] = None
+    industry: list[str] = []
+    theme: list[str] = []
+    src_url: Optional[str] = None
     tags: list[str] = []
     pages: Optional[int] = None
     images: Optional[list[str]] = None
@@ -79,9 +89,13 @@ class ArticleDetail(BaseModel):
     content: Optional[str] = None
     date: str
     tab: Optional[str] = None
+    source: Optional[str] = None
     institution: Optional[str] = None
     stock_name: Optional[str] = None
     stock_code: Optional[str] = None
+    industry: list[str] = []
+    theme: list[str] = []
+    src_url: Optional[str] = None
     tags: list[str] = []
     pages: Optional[int] = None
     images: Optional[list[str]] = None

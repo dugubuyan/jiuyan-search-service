@@ -19,3 +19,9 @@ MONGODB_CONFIG = {
     "collection_name": os.getenv("MONGODB_COLLECTION", "documents"),
     "tasks_collection": os.getenv("MONGODB_TASKS_COLLECTION", "pipeline_tasks"),
 }
+
+OSS_CONFIG = {
+    "access_key_id":     os.getenv("OSS_ACCESS_KEY_ID", ""),
+    "access_key_secret": os.getenv("OSS_ACCESS_KEY_SECRET", ""),
+    "endpoint":          os.getenv("OSS_ENDPOINT", "oss-cn-shanghai.aliyuncs.com"),
+}
