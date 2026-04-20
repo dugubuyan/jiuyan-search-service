@@ -4,7 +4,7 @@ BIZ 层路由 — /biz/v1
 """
 import random
 import string
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from urllib.parse import quote
 
 import oss2
@@ -42,14 +42,15 @@ def _fake_author() -> str:
 
 
 def _rec_time_to_str(rec_time) -> str:
-    """将 rec_time (unix timestamp ms 或 s) 转为 YYYY-MM-DD HH:mm"""
+    """将 rec_time (unix timestamp ms 或 s) 转为 YYYY-MM-DD HH:mm（北京时间）"""
     if not rec_time:
         return ""
     ts = int(rec_time)
     # 兼容毫秒和秒
     if ts > 1e11:
         ts = ts // 1000
-    dt = datetime.fromtimestamp(ts, tz=timezone.utc).astimezone()
+    tz_cst = timezone(timedelta(hours=8))
+    dt = datetime.fromtimestamp(ts, tz=tz_cst)
     return dt.strftime("%Y-%m-%d %H:%M")
 
 
