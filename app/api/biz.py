@@ -115,7 +115,7 @@ def _base_feed_item(h: dict, title: str = None, content: str = None) -> FeedItem
         theme=tags_obj.get("theme") or [],
         institute=tags_obj.get("institute") or None,
         src_url=_mask_oss_src_url(src.get("src_url")),
-        tags=[],
+        tags=[tags_obj["tag_type"]] if tags_obj.get("tag_type") else [],
         companies=[],
         author=_fake_author(),
         pages=tags_obj.get("page_count") or None,
@@ -178,7 +178,7 @@ def _hit_to_search_item(h: dict, include_tab: bool = False) -> SearchItem:
         industry=tags_obj.get("industry") or [],
         theme=tags_obj.get("theme") or [],
         src_url=_mask_oss_src_url(src.get("src_url")),
-        tags=[],
+        tags=[tags_obj["tag_type"]] if tags_obj.get("tag_type") else [],
         pages=tags_obj.get("page_count") or None,
         images=None,
     )
@@ -308,7 +308,7 @@ def article_detail(id: str):
         industry=tags_obj.get("industry") or [],
         theme=tags_obj.get("theme") or [],
         src_url=_mask_oss_src_url(src.get("src_url")),
-        tags=[],
+        tags=[tags_obj["tag_type"]] if tags_obj.get("tag_type") else [],
         pages=tags_obj.get("page_count") or None,
         images=None,
     )
