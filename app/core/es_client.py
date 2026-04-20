@@ -174,9 +174,11 @@ class ESClient:
         sort: list = None,
         page: int = 1,
         page_size: int = 20,
-        highlight: bool = False,
+        highlight: bool | dict = False,
     ) -> dict:
-        """供 BIZ 层直接传入 must/filters/sort 的底层搜索"""
+        """供 BIZ 层直接传入 must/filters/sort 的底层搜索
+        highlight 可传 bool 或自定义 highlight dict
+        """
         filters = [{"term": {"status": "published"}}]
         if extra_filters:
             filters.extend(extra_filters)
@@ -194,7 +196,9 @@ class ESClient:
             "_source": {},
         }
 
-        if highlight:
+        if isinstance(highlight, dict):
+            body["highlight"] = highlight
+        elif highlight:
             body["highlight"] = {
                 "fields": {
                     "content": {"fragment_size": 200, "number_of_fragments": 1},

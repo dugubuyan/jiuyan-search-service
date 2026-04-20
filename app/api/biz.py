@@ -154,10 +154,12 @@ def _hit_to_search_item(h: dict, include_tab: bool = False) -> SearchItem:
         title = hl["title"][0]
 
     content = None
-    if hl.get("content"):
-        content = hl["content"][0]
-
     doc_type = src.get("doc_type", "")
+    if doc_type in ("remark", "interaction"):
+        # 点评和互动：优先用带高亮标签的全文，没有则用原始全文
+        content = hl["content"][0] if hl.get("content") else src.get("content")
+    elif hl.get("content"):
+        content = hl["content"][0]
     tab_label = None
     if include_tab:
         reverse = {v: k for k, v in TAB_TO_DOC_TYPE.items()}
@@ -262,6 +264,19 @@ def biz_search(
         "operator": "and",
     }}]
 
+    # 点评和互动返回全文高亮（number_of_fragments=0），其他返回片段
+    if tab in ("点评", "互动"):
+        highlight_cfg = {
+            "fields": {
+                "content": {"number_of_fragments": 0},
+                "title":   {"number_of_fragments": 0},
+            },
+            "pre_tags":  ["<em>"],
+            "post_tags": ["</em>"],
+        }
+    else:
+        highlight_cfg = True
+
     try:
         resp = get_es().search_raw(
             must=must,
@@ -269,7 +284,7 @@ def biz_search(
             sort=order,
             page=page,
             page_size=page_size,
-            highlight=True,
+            highlight=highlight_cfg,
         )
     except Exception as e:
         logger.error(f"search error q={q} tab={tab}: {e}", exc_info=True)
