@@ -127,6 +127,7 @@ class ESClient:
                 "query":  q,
                 "fields": ["title^3", "content"],
                 "type":   "best_fields",
+                "operator": "and",
             }}]
             # 有关键词：相关度优先，rec_time 次要
             sort = [{"_score": "desc"}, {"rec_time": "desc"}]

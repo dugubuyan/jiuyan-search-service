@@ -237,7 +237,9 @@ def biz_search(
             extra_filters.append({"term": {"source": FILTER_TO_SOURCE[filter]}})
         if tab == "研报" and filter in FILTER_TO_SOURCE:
             extra_filters.append({"term": {"source": FILTER_TO_SOURCE[filter]}})
-
+    else:
+        # 未知 tab，直接返回空结果
+        return BizSearchResponse(total=0, page=page, page_size=page_size, section_counts=None, items=[])
     # 日期过滤
     if date_start or date_end:
         date_range = {}
@@ -257,6 +259,7 @@ def biz_search(
         "query": q,
         "fields": ["title^3", "content"],
         "type": "best_fields",
+        "operator": "and",
     }}]
 
     try:
