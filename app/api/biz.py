@@ -122,10 +122,21 @@ def _base_feed_item(h: dict, title: str = None, content: str = None) -> FeedItem
     )
 
 
+def _remark_title(title: str, content: str) -> str | None:
+    """点评 title 去重：若 title 是正文第一行的截断，返回 None"""
+    if not title or not content:
+        return title or None
+    clean = title.rstrip("….").rstrip()
+    first_line = content.split("\n")[0]
+    if clean and first_line.startswith(clean):
+        return None
+    return title
+
+
 def _hit_to_remark(h: dict) -> FeedItem:
-    """点评：不传 title，返回全文"""
     src = h["_source"]
-    return _base_feed_item(h, title=None, content=src.get("content"))
+    title = _remark_title(src.get("title", ""), src.get("content", ""))
+    return _base_feed_item(h, title=title, content=src.get("content"))
 
 
 def _hit_to_default(h: dict) -> FeedItem:
