@@ -166,8 +166,10 @@ def _hit_to_search_item(h: dict, include_tab: bool = False) -> SearchItem:
 
     content = None
     doc_type = src.get("doc_type", "")
-    if doc_type in ("remark", "interaction"):
-        # 点评和互动：优先用带高亮标签的全文，没有则用原始全文
+    if doc_type == "remark":
+        title = _remark_title(title, src.get("content", ""))
+        content = hl["content"][0] if hl.get("content") else src.get("content")
+    elif doc_type == "interaction":
         content = hl["content"][0] if hl.get("content") else src.get("content")
     elif hl.get("content"):
         content = hl["content"][0]
