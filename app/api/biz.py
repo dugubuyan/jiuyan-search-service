@@ -3,6 +3,7 @@ BIZ 层路由 — /biz/v1
 对接前端业务接口，底层复用 ESClient
 """
 import random
+import re
 import string
 from datetime import datetime, timezone, timedelta
 from urllib.parse import quote
@@ -123,12 +124,13 @@ def _base_feed_item(h: dict, title: str = None, content: str = None) -> FeedItem
 
 
 def _remark_title(title: str, content: str) -> str | None:
-    """点评 title 去重：若 title 是正文第一行的截断，返回 None"""
+    """点评 title 去重：若 title 是正文截断，返回 None"""
     if not title or not content:
         return title or None
     clean = title.rstrip("….").rstrip()
-    first_line = content.split("\n")[0]
-    if clean and first_line.startswith(clean):
+    clean_normalized = re.sub(r'\s+', '', clean)
+    content_normalized = re.sub(r'\s+', '', content)
+    if clean_normalized and content_normalized.startswith(clean_normalized):
         return None
     return title
 

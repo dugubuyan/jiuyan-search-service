@@ -57,7 +57,7 @@ class BizSearchRequest(BaseModel):
 
 class SearchItem(BaseModel):
     id: str
-    title: str
+    title: Optional[str] = None
     content: Optional[str] = None
     date: str
     tab: Optional[str] = None          # 仅综合Tab返回
