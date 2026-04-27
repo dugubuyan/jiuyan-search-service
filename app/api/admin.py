@@ -11,9 +11,11 @@ from app.api.admin_index     import router as index_router
 from app.api.admin_docs      import router as docs_router
 from app.api.admin_pipeline  import router as pipeline_router
 from app.api.admin_sensitive import router as sensitive_router
+from app.api.admin_broker    import router as broker_router
 
 router = APIRouter()
 router.include_router(index_router)
 router.include_router(docs_router)
 router.include_router(pipeline_router)
 router.include_router(sensitive_router)
+router.include_router(broker_router)

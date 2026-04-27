@@ -82,9 +82,9 @@ def _build_feed_filters(tab: str, filter_val: str, include_ir: bool, include_wec
         # 纪要Tab：不含投关活动时排除 source=投资者关系
         if tab == "纪要" and not include_ir:
             filters.append({"bool": {"must_not": {"term": {"source": "投资者关系"}}}})
-        # 研报Tab：不含公众号时排除
+        # 研报Tab：不含公众号时排除 tags.format=公众号
         if tab == "研报" and not include_wechat:
-            filters.append({"bool": {"must_not": {"term": {"source": "公众号"}}}})
+            filters.append({"bool": {"must_not": {"term": {"tags.format": "公众号"}}}})
         # 机构/网络/图片 子筛选
         if filter_val in FILTER_TO_SOURCE:
             filters.append({"term": {"source": FILTER_TO_SOURCE[filter_val]}})
@@ -250,13 +250,13 @@ def biz_search(
     extra_filters = []
     if tab in TAB_TO_DOC_TYPE:
         extra_filters.append({"term": {"doc_type": TAB_TO_DOC_TYPE[tab]}})
-        if tab == "纪要" and filter in FILTER_TO_SOURCE:
-            extra_filters.append({"term": {"source": FILTER_TO_SOURCE[filter]}})
-        if tab == "研报" and filter in FILTER_TO_SOURCE:
+        # source 子筛选：点评/纪要/研报 均支持
+        if tab in ("点评", "纪要", "研报") and filter in FILTER_TO_SOURCE:
             extra_filters.append({"term": {"source": FILTER_TO_SOURCE[filter]}})
     else:
         # 未知 tab，直接返回空结果
         return BizSearchResponse(total=0, page=page, page_size=page_size, section_counts=None, items=[])
+
     # 日期过滤
     if date_start or date_end:
         date_range = {}
@@ -265,6 +265,15 @@ def biz_search(
         if date_end:
             date_range["lte"] = date_end
         extra_filters.append({"range": {"date": date_range}})
+
+    # 研报页数过滤
+    if page_min is not None or page_max is not None:
+        page_range = {}
+        if page_min is not None:
+            page_range["gte"] = page_min
+        if page_max is not None:
+            page_range["lte"] = page_max
+        extra_filters.append({"range": {"tags.page_count": page_range}})
 
     # 排序
     if sort == "score":

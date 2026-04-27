@@ -29,6 +29,7 @@ INDEX_MAPPING = {
                     "theme":     {"type": "keyword"},
                     "institute": {"type": "keyword"},
                     "tag_type":  {"type": "keyword"},
+                    "format":    {"type": "keyword"},
                 }
             },
         }
