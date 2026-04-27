@@ -84,7 +84,7 @@ def _build_feed_filters(tab: str, filter_val: str, include_ir: bool, include_wec
             filters.append({"bool": {"must_not": {"term": {"source": "投资者关系"}}}})
         # 研报Tab：不含公众号时排除 tags.format=公众号
         if tab == "研报" and not include_wechat:
-            filters.append({"bool": {"must_not": {"term": {"tags.format": "公众号"}}}})
+            filters.append({"bool": {"must_not": {"term": {"tags.format.keyword": "公众号"}}}})
         # 机构/网络/图片 子筛选
         if filter_val in FILTER_TO_SOURCE:
             filters.append({"term": {"source": FILTER_TO_SOURCE[filter_val]}})
