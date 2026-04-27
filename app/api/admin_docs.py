@@ -130,15 +130,34 @@ def batch_enable(req: BatchEnableRequest):
         if req.source:
             es_filters.append({"term": {"source": req.source}})
         es_query = {"bool": {"filter": es_filters}}
+
+    # 阿里云 Serverless ES 不支持 Painless 脚本，改用 scroll + bulk update
     try:
-        resp = es.es.update_by_query(
+        updated = 0
+        resp = es.es.search(
             index=es.index,
-            body={"query": es_query, "script": {"source": "ctx._source.status = 'published'", "lang": "painless"}},
-            requests_per_second=req.requests_per_second, conflicts="proceed",
+            body={"query": es_query, "_source": False, "size": 500},
+            scroll="2m",
         )
+        scroll_id = resp["_scroll_id"]
+        while True:
+            hits = resp["hits"]["hits"]
+            if not hits:
+                break
+            actions = []
+            for h in hits:
+                actions.append({"update": {"_index": es.index, "_id": h["_id"]}})
+                actions.append({"doc": {"status": "published"}})
+            bulk_resp = es.es.bulk(operations=actions, refresh=False)
+            updated += sum(1 for item in bulk_resp["items"] if item.get("update", {}).get("result") in ("updated", "noop"))
+            resp = es.es.scroll(scroll_id=scroll_id, scroll="2m")
+        try:
+            es.es.clear_scroll(scroll_id=scroll_id)
+        except Exception:
+            pass
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"ES 批量更新失败: {e}")
-    return {"updated": resp.get("updated", 0)}
+    return {"updated": updated}
 
 
 @router.post("/docs/{doc_id}/reindex", summary="重置单条文档 ES 索引")
