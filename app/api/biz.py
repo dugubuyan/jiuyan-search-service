@@ -120,6 +120,7 @@ def _base_feed_item(h: dict, title: str = None, content: str = None) -> FeedItem
         companies=[],
         author=_fake_author(),
         pages=tags_obj.get("page_count") or None,
+        format=tags_obj.get("format") or None,
     )
 
 
@@ -198,6 +199,7 @@ def _hit_to_search_item(h: dict, include_tab: bool = False) -> SearchItem:
         tags=[tags_obj["tag_type"]] if tags_obj.get("tag_type") else [],
         pages=tags_obj.get("page_count") or None,
         images=None,
+        format=tags_obj.get("format") or None,
     )
 
 
@@ -353,6 +355,7 @@ def article_detail(id: str):
         tags=[tags_obj["tag_type"]] if tags_obj.get("tag_type") else [],
         pages=tags_obj.get("page_count") or None,
         images=None,
+        format=tags_obj.get("format") or None,
     )
 
 

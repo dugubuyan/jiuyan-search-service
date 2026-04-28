@@ -31,6 +31,7 @@ class FeedItem(BaseModel):
     companies: list[str] = []          # 保留兼容，当前为空
     author: Optional[str] = None
     pages: Optional[int] = None
+    format: Optional[str] = None       # 研报格式：pdf / 公众号
 
 
 class FeedResponse(BaseModel):
@@ -71,6 +72,7 @@ class SearchItem(BaseModel):
     tags: list[str] = []
     pages: Optional[int] = None
     images: Optional[list[str]] = None
+    format: Optional[str] = None       # 研报格式：pdf / 公众号
 
 
 class BizSearchResponse(BaseModel):
@@ -99,3 +101,4 @@ class ArticleDetail(BaseModel):
     tags: list[str] = []
     pages: Optional[int] = None
     images: Optional[list[str]] = None
+    format: Optional[str] = None       # 研报格式：pdf / 公众号
