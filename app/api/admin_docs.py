@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from app.core.es_client import ESClient
 from app.api.admin_deps import mongo_col
+from app.core.logger import logger
 
 router = APIRouter(prefix="/admin", tags=["admin - docs"])
 
@@ -28,8 +29,8 @@ class DocEditRequest(BaseModel):
 
 
 # pub_status（ES status 字段）-> 前端展示值映射
-_PUB_STATUS_MAP = {"published": "enabled", "pending": "pending"}
-_PUB_STATUS_REVERSE = {"enabled": "published", "disabled": "pending", "pending": "pending"}
+_PUB_STATUS_MAP = {"published": "enabled", "pending": "pending", "filtered": "filtered"}
+_PUB_STATUS_REVERSE = {"enabled": "published", "disabled": "pending", "pending": "pending", "filtered": "filtered"}
 
 
 @router.get("/docs", summary="全量文档列表")
@@ -45,7 +46,7 @@ def list_docs(
     if doc_type:
         filters.append({"term": {"doc_type": doc_type}})
     if source:
-        filters.append({"term": {"source": source}})
+        filters.append({"term": {"_internal_source": source}})
     if pub_status:
         es_status = _PUB_STATUS_REVERSE.get(pub_status, pub_status)
         filters.append({"term": {"status": es_status}})
@@ -66,6 +67,7 @@ def list_docs(
         docs.append({
             "_id": h["_id"],
             **src,
+            "source": src.get("_internal_source") or src.get("source"),
             "indexes": {"es": {"pub_status": _PUB_STATUS_MAP.get(src.get("status", ""), src.get("status", ""))}},
         })
     return {"total": total, "page": page, "page_size": page_size, "docs": docs}
@@ -79,6 +81,91 @@ def list_pending(
     page_size: int           = Query(20, ge=1, le=100),
 ):
     return list_docs(doc_type=doc_type, source=source, pub_status="pending", page=page, page_size=page_size)
+
+
+@router.post("/docs/batch/enable", summary="批量发布文档")
+def batch_enable(req: BatchEnableRequest):
+    es = ESClient()
+    if req.doc_ids:
+        es_query = {"terms": {"_id": req.doc_ids}}
+    else:
+        es_filters = [{"terms": {"status": ["pending", "filtered"]}}]
+        if req.doc_type:
+            es_filters.append({"term": {"doc_type": req.doc_type}})
+        if req.source:
+            es_filters.append({"term": {"source": req.source}})
+        es_query = {"bool": {"filter": es_filters}}
+
+    # 阿里云 Serverless ES 不支持 Painless 脚本，改用 scroll + bulk update
+    try:
+        updated = 0
+        resp = es.es.search(
+            index=es.index,
+            body={"query": es_query, "_source": False, "size": 500},
+            scroll="2m",
+        )
+        scroll_id = resp["_scroll_id"]
+        while True:
+            hits = resp["hits"]["hits"]
+            if not hits:
+                break
+            actions = []
+            for h in hits:
+                actions.append({"update": {"_index": es.index, "_id": h["_id"]}})
+                actions.append({"doc": {"status": "published"}})
+            try:
+                bulk_resp = es.es.bulk(operations=actions, refresh=False)
+                for item in bulk_resp["items"]:
+                    result = item.get("update", {}).get("result")
+                    error  = item.get("update", {}).get("error", {})
+                    if result in ("updated", "noop"):
+                        updated += 1
+                    elif error.get("type") == "document_missing_exception":
+                        pass
+            except Exception as bulk_err:
+                logger.warning(f"bulk update 部分失败，跳过: {bulk_err}")
+            resp = es.es.scroll(scroll_id=scroll_id, scroll="2m")
+        try:
+            es.es.clear_scroll(scroll_id=scroll_id)
+        except Exception:
+            pass
+    except Exception as e:
+        import traceback
+        logger.error(f"batch_enable 失败: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"ES 批量更新失败: {e}")
+    return {"updated": updated}
+
+
+@router.post("/docs/batch/reindex", summary="批量重置 ES 索引")
+def batch_reindex(req: BatchReindexRequest):
+    col = mongo_col()
+    es  = ESClient()
+    if req.doc_ids:
+        mongo_filter = {"_id": {"$in": req.doc_ids}}
+        es_query     = {"terms": {"_id": req.doc_ids}}
+    else:
+        mongo_filter = {}
+        es_filters: list = []
+        if req.doc_type:
+            mongo_filter["doc_type"] = req.doc_type
+            es_filters.append({"term": {"doc_type": req.doc_type}})
+        if req.source:
+            mongo_filter["source"] = req.source
+            es_filters.append({"term": {"source": req.source}})
+        es_query = {"bool": {"filter": es_filters}} if es_filters else {"match_all": {}}
+    result = col.update_many(mongo_filter, {"$set": {
+        "indexes.es.status": "pending", "indexes.es.indexed_at": None,
+        "indexes.es.error": "", "updated_at": now_utc(),
+    }})
+    try:
+        es.es.update_by_query(
+            index=es.index,
+            body={"query": es_query, "script": {"source": "ctx._source.status = 'pending'", "lang": "painless"}},
+            requests_per_second=req.requests_per_second, conflicts="proceed",
+        )
+    except Exception as e:
+        print(f"[admin] batch reindex ES 失败: {e}")
+    return {"modified": result.modified_count}
 
 
 @router.post("/docs/{doc_id}/enable", summary="发布文档")
@@ -118,48 +205,6 @@ def edit_doc(doc_id: str, req: DocEditRequest):
     return {"status": "ok"}
 
 
-@router.post("/docs/batch/enable", summary="批量发布文档")
-def batch_enable(req: BatchEnableRequest):
-    es = ESClient()
-    if req.doc_ids:
-        es_query = {"terms": {"_id": req.doc_ids}}
-    else:
-        es_filters = [{"term": {"status": "pending"}}]
-        if req.doc_type:
-            es_filters.append({"term": {"doc_type": req.doc_type}})
-        if req.source:
-            es_filters.append({"term": {"source": req.source}})
-        es_query = {"bool": {"filter": es_filters}}
-
-    # 阿里云 Serverless ES 不支持 Painless 脚本，改用 scroll + bulk update
-    try:
-        updated = 0
-        resp = es.es.search(
-            index=es.index,
-            body={"query": es_query, "_source": False, "size": 500},
-            scroll="2m",
-        )
-        scroll_id = resp["_scroll_id"]
-        while True:
-            hits = resp["hits"]["hits"]
-            if not hits:
-                break
-            actions = []
-            for h in hits:
-                actions.append({"update": {"_index": es.index, "_id": h["_id"]}})
-                actions.append({"doc": {"status": "published"}})
-            bulk_resp = es.es.bulk(operations=actions, refresh=False)
-            updated += sum(1 for item in bulk_resp["items"] if item.get("update", {}).get("result") in ("updated", "noop"))
-            resp = es.es.scroll(scroll_id=scroll_id, scroll="2m")
-        try:
-            es.es.clear_scroll(scroll_id=scroll_id)
-        except Exception:
-            pass
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"ES 批量更新失败: {e}")
-    return {"updated": updated}
-
-
 @router.post("/docs/{doc_id}/reindex", summary="重置单条文档 ES 索引")
 def reindex_doc(doc_id: str):
     col = mongo_col()
@@ -173,35 +218,3 @@ def reindex_doc(doc_id: str):
     except Exception:
         pass
     return {"doc_id": doc_id, "result": "reindex scheduled"}
-
-
-@router.post("/docs/batch/reindex", summary="批量重置 ES 索引")
-def batch_reindex(req: BatchReindexRequest):
-    col = mongo_col()
-    es  = ESClient()
-    if req.doc_ids:
-        mongo_filter = {"_id": {"$in": req.doc_ids}}
-        es_query     = {"terms": {"_id": req.doc_ids}}
-    else:
-        mongo_filter = {}
-        es_filters: list = []
-        if req.doc_type:
-            mongo_filter["doc_type"] = req.doc_type
-            es_filters.append({"term": {"doc_type": req.doc_type}})
-        if req.source:
-            mongo_filter["source"] = req.source
-            es_filters.append({"term": {"source": req.source}})
-        es_query = {"bool": {"filter": es_filters}} if es_filters else {"match_all": {}}
-    result = col.update_many(mongo_filter, {"$set": {
-        "indexes.es.status": "pending", "indexes.es.indexed_at": None,
-        "indexes.es.error": "", "updated_at": now_utc(),
-    }})
-    try:
-        es.es.update_by_query(
-            index=es.index,
-            body={"query": es_query, "script": {"source": "ctx._source.status = 'pending'", "lang": "painless"}},
-            requests_per_second=req.requests_per_second, conflicts="proceed",
-        )
-    except Exception as e:
-        print(f"[admin] batch reindex ES 失败: {e}")
-    return {"modified": result.modified_count}

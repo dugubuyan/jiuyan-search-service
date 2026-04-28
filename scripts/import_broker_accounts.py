@@ -17,7 +17,7 @@ load_dotenv()
 from pymongo import MongoClient, ASCENDING
 from config import MONGODB_CONFIG
 
-CSV_PATH = Path(__file__).parent.parent / "公众号券商对应表.csv"
+CSV_PATH = Path(__file__).parent.parent / "gongzhonghao.csv"
 SKIP_BROKERS = {"其他机构"}
 SKIP_ROWS = {"表格 1", "公众号名称"}  # 噪音行
 

@@ -12,6 +12,13 @@ class SensitiveWordRequest(BaseModel):
     source_type: Optional[str] = None   # None = 全局，"remark_pai" 等 = 渠道专属
 
 
+class SensitiveWordUpdateRequest(BaseModel):
+    word:         str                    # 原词
+    source_type:  Optional[str] = None  # 原 source_type
+    new_word:     Optional[str] = None  # 新词，不传则不改
+    new_source_type: Optional[str] = None  # 新 source_type，不传则不改
+
+
 @router.get("/sensitive-words", summary="查看敏感词列表")
 def list_sensitive_words(
     source_type: Optional[str] = Query(None, description="渠道过滤，为空返回全部"),
@@ -35,6 +42,23 @@ def add_sensitive_word(req: SensitiveWordRequest):
     except Exception:
         raise HTTPException(status_code=409, detail="敏感词已存在")
     return {"word": req.word, "source_type": req.source_type, "result": "added"}
+
+
+@router.put("/sensitive-words", summary="修改敏感词")
+def update_sensitive_word(req: SensitiveWordUpdateRequest):
+    if req.new_word is None and req.new_source_type is None:
+        raise HTTPException(status_code=400, detail="new_word 和 new_source_type 不能同时为空")
+    col = mongo_sensitive()
+    query: dict = {"word": req.word, "source_type": req.source_type}
+    update: dict = {}
+    if req.new_word is not None:
+        update["word"] = req.new_word.strip()
+    if req.new_source_type is not None:
+        update["source_type"] = req.new_source_type
+    result = col.update_one(query, {"$set": update})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="敏感词不存在")
+    return {"status": "ok"}
 
 
 @router.delete("/sensitive-words", summary="删除敏感词")
