@@ -127,7 +127,11 @@ def _base_feed_item(h: dict, title: str = None, content: str = None) -> FeedItem
     doc_type = src.get("doc_type", "")
 
     if doc_type == "research":
-        date = _research_date_str(src.get("rec_time"), src.get("date", ""))
+        fmt = (src.get("tags") or {}).get("format", "")
+        if fmt == "pdf":
+            date = _research_date_str(src.get("rec_time"), src.get("date", ""))
+        else:
+            date = _rec_time_to_str(src.get("rec_time"))
     else:
         date = _rec_time_to_str(src.get("rec_time"))
 
@@ -240,8 +244,20 @@ def feed(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=50),
 ):
+    browse_max_pages = ES_CONFIG.get("browse_max_pages", 100)
+    if page > browse_max_pages:
+        raise HTTPException(
+            status_code=400,
+            detail=f"最大支持 {browse_max_pages} 页（每页最多 50 条，共 {browse_max_pages * 50} 条）",
+        )
+    browse_max_offset = ES_CONFIG.get("browse_max_offset", 1000)
+    if (page - 1) * page_size >= browse_max_offset:
+        raise HTTPException(
+            status_code=400,
+            detail=f"最多访问前 {browse_max_offset} 条记录",
+        )
     extra_filters = _build_feed_filters(tab, filter, include_ir, include_wechat)
-    sort = [{"date": "desc"}] if tab == "研报" else [{"rec_time": "desc"}]
+    sort = [{"rec_time": "desc"}]
     try:
         resp = get_es().search_raw(
             must=[{"match_all": {}}],
@@ -257,6 +273,8 @@ def feed(
 
     total = resp["hits"]["total"]["value"]
     items = [_hit_to_feed_item(h, tab=tab) for h in resp["hits"]["hits"]]
+    if tab == "研报":
+        items = sorted(items, key=lambda x: x.date or "", reverse=True)
     return FeedResponse(total=total, page=page, page_size=page_size, items=items)
 
 

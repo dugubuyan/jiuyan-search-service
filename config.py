@@ -8,9 +8,8 @@ ES_CONFIG = {
     "username": os.getenv("ES_USERNAME", ""),
     "password": os.getenv("ES_PASSWORD", ""),
     "index":    os.getenv("ES_INDEX", "documents"),
-    # 无关键词纯浏览时的最大页数限制，超过返回 400
-    # 有关键词全文检索不受此限制（ES 默认 10000 条上限）
     "browse_max_pages": int(os.getenv("ES_BROWSE_MAX_PAGES", "100")),
+    "browse_max_offset": int(os.getenv("ES_BROWSE_MAX_OFFSET", "1000")),
 }
 
 MONGODB_CONFIG = {
