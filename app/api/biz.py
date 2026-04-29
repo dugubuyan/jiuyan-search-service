@@ -55,6 +55,25 @@ def _rec_time_to_str(rec_time) -> str:
     return dt.strftime("%Y-%m-%d %H:%M")
 
 
+def _research_date_str(rec_time, date_str: str) -> str:
+    """research 专用：rec_time 是今天（CST）则用精确时间，否则用 date 字段"""
+    tz_cst = timezone(timedelta(hours=8))
+    today_cst = datetime.now(tz_cst).date()
+
+    if rec_time:
+        ts = int(rec_time)
+        if ts > 1e11:
+            ts = ts // 1000
+        rec_date = datetime.fromtimestamp(ts, tz=tz_cst).date()
+        if rec_date == today_cst:
+            return datetime.fromtimestamp(ts, tz=tz_cst).strftime("%Y-%m-%d %H:%M")
+
+    # 非今天，用 date 字段
+    if date_str:
+        return f"{date_str} 00:00"
+    return ""
+
+
 # tab -> doc_type 映射
 # 综合 Tab 映射到 comprehensive，后续数据入库后生效
 TAB_TO_DOC_TYPE = {
@@ -105,11 +124,18 @@ def _mask_oss_src_url(raw_url: str | None) -> str | None:
 def _base_feed_item(h: dict, title: str = None, content: str = None) -> FeedItem:
     src = h["_source"]
     tags_obj = src.get("tags") or {}
+    doc_type = src.get("doc_type", "")
+
+    if doc_type == "research":
+        date = _research_date_str(src.get("rec_time"), src.get("date", ""))
+    else:
+        date = _rec_time_to_str(src.get("rec_time"))
+
     return FeedItem(
         id=src.get("doc_id", h["_id"]),
         title=title,
         content=content,
-        date=_rec_time_to_str(src.get("rec_time")),
+        date=date,
         source=src.get("source"),
         stock_code=src.get("stock_code") or [],
         industry=tags_obj.get("industry") or [],
@@ -215,11 +241,12 @@ def feed(
     page_size: int = Query(20, ge=1, le=50),
 ):
     extra_filters = _build_feed_filters(tab, filter, include_ir, include_wechat)
+    sort = [{"date": "desc"}] if tab == "研报" else [{"rec_time": "desc"}]
     try:
         resp = get_es().search_raw(
             must=[{"match_all": {}}],
             extra_filters=extra_filters,
-            sort=[{"rec_time": "desc"}],
+            sort=sort,
             page=page,
             page_size=page_size,
             highlight=False,
