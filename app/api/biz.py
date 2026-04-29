@@ -20,7 +20,7 @@ from app.models.biz import (
     SearchItem, BizSearchResponse,
     ArticleDetail,
 )
-from config import OSS_CONFIG
+from config import OSS_CONFIG, ES_CONFIG
 
 router = APIRouter(prefix="/biz/v1", tags=["biz"])
 
@@ -56,22 +56,25 @@ def _rec_time_to_str(rec_time) -> str:
 
 
 def _research_date_str(rec_time, date_str: str) -> str:
-    """research 专用：rec_time 是今天（CST）则用精确时间，否则用 date 字段"""
+    """research 专用：date 字段是今天（CST）则用 rec_time 精确时间，否则用 date 字段"""
     tz_cst = timezone(timedelta(hours=8))
     today_cst = datetime.now(tz_cst).date()
 
-    if rec_time:
-        ts = int(rec_time)
-        if ts > 1e11:
-            ts = ts // 1000
-        rec_date = datetime.fromtimestamp(ts, tz=tz_cst).date()
-        if rec_date == today_cst:
-            return datetime.fromtimestamp(ts, tz=tz_cst).strftime("%Y-%m-%d %H:%M")
-
-    # 非今天，用 date 字段
+    # 用 date 字段判断是否今天
     if date_str:
-        return f"{date_str} 00:00"
-    return ""
+        try:
+            pub_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            if pub_date == today_cst and rec_time:
+                ts = int(rec_time)
+                if ts > 1e11:
+                    ts = ts // 1000
+                return datetime.fromtimestamp(ts, tz=tz_cst).strftime("%Y-%m-%d %H:%M")
+            return f"{date_str} 00:00"
+        except ValueError:
+            pass
+
+    # date 字段异常，fallback 到 rec_time
+    return _rec_time_to_str(rec_time)
 
 
 # tab -> doc_type 映射
